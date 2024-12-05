@@ -6,10 +6,12 @@ This is a library created by FRC Team 2960 Automation Nation to contain commonly
 
 The library is broken up by required vendor library. This is to keep unnecessary vendor libraries from being included when the part of this library that used it is not being used.
 
-This is the core library that contains all the code that does not require any vendor libraries. This submodule must be included for all of the vendor specific portions of the library to work correctly.
+This is the core library. This submodule must be included for all of the vendor specific portions of the library to work correctly.
 
 ## Prerequisites  
-This library does not require any prerequisites other than WPILib.
+The following is required for this library to work correctly
+- [PathPlannerLib](https://pathplanner.dev/pplib-getting-started.html)
+- [PhotonLib](https://docs.photonvision.org/en/latest/docs/programming/photonlib/adding-vendordep.html)
 
 ## Usage
 This library is intended to be included as a Git submodule in a sub folder of a java based FRC robot project. 
@@ -48,7 +50,3 @@ The lib2960 library is broken up by the required vendor libraries. The other ass
   - Includes implementations of lib2960 classes that use the CTRE Phoenix vendor libraries
 - lib2960 Rev - [lib2960_rev](https://github.com/Team-2960/lib2960_rev)
   - Includes implementations of lib2960 classes that use the RevLib vendor libraries
-- lib2960 PathPlanner - [lib2960_pathplanner](https://github.com/Team-2960/lib2960_pathplanner)
-  - Includes helper methods to use Path Planner with lib2960
-- lib2960 Photon Vision - [lib2960_photonvision](https://github.com/Team-2960/lib2960_photonvision)
-  - Implements lib2960 objects for interfacing with systems running Photon Vision
