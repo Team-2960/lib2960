@@ -20,32 +20,18 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package frc.lib2960.oi;
+package frc.lib2960.util;
 
-/**
- * Button group for and-ing buttons together
- */
-public class ButtonAndGroup extends ButtonBase {
-    private ButtonBase[] buttons;   /**< Buttons in the group */
+public class AbsEncoderSettings {
+    public final String name;
+    public final int port;
+    public final boolean invert;
+    public final double zero_offset;
 
-    /**
-     * Constructor
-     * @param   buttons     Buttons in the group
-     */
-    public ButtonAndGroup(ButtonBase... buttons) {
-        this.buttons = buttons;
-    }
-
-    /**
-     * Check if the button is pressed.
-     * @return  true if all buttons are pressed
-     */
-    @Override
-    public boolean pressed() {
-        boolean result = true;
-
-        for(var button: buttons) result &= button.pressed();
-
-        return result;
+    public AbsEncoderSettings(String name, int port, boolean invert, double zero_offset) {
+        this.name = name;
+        this.port = port;
+        this.invert = invert;
+        this.zero_offset = zero_offset;
     }
 }

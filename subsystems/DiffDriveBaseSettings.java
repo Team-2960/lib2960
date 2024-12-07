@@ -20,32 +20,12 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package frc.lib2960.oi;
+ package frc.lib2960.subsystems;
 
 /**
- * Button group for and-ing buttons together
+ * Differential Drivetrain settings
  */
-public class ButtonAndGroup extends ButtonBase {
-    private ButtonBase[] buttons;   /**< Buttons in the group */
-
-    /**
-     * Constructor
-     * @param   buttons     Buttons in the group
-     */
-    public ButtonAndGroup(ButtonBase... buttons) {
-        this.buttons = buttons;
-    }
-
-    /**
-     * Check if the button is pressed.
-     * @return  true if all buttons are pressed
-     */
-    @Override
-    public boolean pressed() {
-        boolean result = true;
-
-        for(var button: buttons) result &= button.pressed();
-
-        return result;
-    }
+public class DiffDriveBaseSettings {
+    
+        // TODO Add appropriate settings
 }

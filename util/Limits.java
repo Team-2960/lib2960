@@ -20,7 +20,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
- package frc.lib2960.util;
+package frc.lib2960.util;
 
 /**
  * Handles limit checks

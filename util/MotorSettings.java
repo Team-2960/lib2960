@@ -20,32 +20,25 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package frc.lib2960.oi;
+package frc.lib2960.util;
 
 /**
- * Button group for and-ing buttons together
+ * Motor Settings
  */
-public class ButtonAndGroup extends ButtonBase {
-    private ButtonBase[] buttons;   /**< Buttons in the group */
+public class MotorSettings {
+    public final String name;               /**< Motor Name */
+    public final int id;                    /**< Motor ID */
+    public final boolean inverted;          /**< Motor direction invert */
 
     /**
      * Constructor
-     * @param   buttons     Buttons in the group
+     * @param name              Motor Name
+     * @param id                Motor ID
+     * @param inverted          Motor direction invert
      */
-    public ButtonAndGroup(ButtonBase... buttons) {
-        this.buttons = buttons;
-    }
-
-    /**
-     * Check if the button is pressed.
-     * @return  true if all buttons are pressed
-     */
-    @Override
-    public boolean pressed() {
-        boolean result = true;
-
-        for(var button: buttons) result &= button.pressed();
-
-        return result;
+    public MotorSettings(String name, int id, boolean inverted) {
+        this.name = name;
+        this.id = id;
+        this.inverted = inverted;
     }
 }

@@ -20,32 +20,28 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package frc.lib2960.oi;
+package frc.lib2960.util;
 
-/**
- * Button group for and-ing buttons together
- */
-public class ButtonAndGroup extends ButtonBase {
-    private ButtonBase[] buttons;   /**< Buttons in the group */
+import edu.wpi.first.wpilibj.PneumaticsModuleType;
 
-    /**
-     * Constructor
-     * @param   buttons     Buttons in the group
-     */
-    public ButtonAndGroup(ButtonBase... buttons) {
-        this.buttons = buttons;
-    }
+public class DoubleSolinoidSettings {
+    public final String name;
+    public final int ph_can_id;
+    public final PneumaticsModuleType module_type;
+    public final int fwd_port;
+    public final int rev_port;
 
-    /**
-     * Check if the button is pressed.
-     * @return  true if all buttons are pressed
-     */
-    @Override
-    public boolean pressed() {
-        boolean result = true;
-
-        for(var button: buttons) result &= button.pressed();
-
-        return result;
+    public DoubleSolinoidSettings(
+        String name,
+        int ph_can_id, 
+        PneumaticsModuleType module_type, 
+        int fwd_port, 
+        int rev_port
+    ) {
+        this.name = name;
+        this.ph_can_id = ph_can_id;
+        this.module_type = module_type;
+        this.fwd_port = fwd_port;
+        this.rev_port = rev_port;
     }
 }

@@ -20,21 +20,22 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package ftc.lib2960.subsystems;
+package frc.lib2960.subsystems;
 
-import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.Vector;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 /**
  * Interface for all drivetrain objects
  */
-public interface Drivetrain {
-    public void setRobotRelativeSpeeds(ChassisSpeeds speeds);
-    public ChassisSpeeds getRobotRelativeSpeeds();
-    public Pose2d getEstimatedPos(); 
-    public void resetPoseEst(Pose2d new_pose);
-    public void addVisionPose(Pose2d pose, double time_stamp);
-    public void addVisionPose(Pose2d pose, double time_stamp, Vector<N3> std_dev);
+public abstract class Drivetrain extends SubsystemBase{
+    public abstract void setRobotRelativeSpeeds(ChassisSpeeds speeds);
+    public abstract ChassisSpeeds getRobotRelativeSpeeds();
+    public abstract Pose2d getEstimatedPos(); 
+    public abstract void resetPoseEst(Pose2d new_pose);
+    public abstract void addVisionPose(Pose2d pose, double time_stamp);
+    public abstract void addVisionPose(Pose2d pose, double time_stamp, Vector<N3> std_dev);
 }

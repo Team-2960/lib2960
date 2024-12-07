@@ -71,7 +71,7 @@ public abstract class ButtonBase {
      * @return true if a falling edge was detected since the last time an edge check was performed
      */
     public boolean fallingEdge() {
-        return checkEdge() == EdgeType.falling;
+        return checkEdge() == EdgeType.FALLING;
     }
 
     /**

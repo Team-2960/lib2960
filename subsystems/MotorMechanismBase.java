@@ -25,10 +25,12 @@ package frc.lib2960.subsystems;
 import frc.lib2960.util.*;
 import frc.lib2960.controllers.*;
 
-import edu.wpi.first.math.geometry.*;
-import edu.wpi.first.wpilibj2.command.*;
-import edu.wpi.first.math.kinematics.*;
+import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.networktables.*;
+import edu.wpi.first.wpilibj.shuffleboard.BuiltInLayouts;
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
+import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardLayout;
 
 /**
  * Base class for motorized mechanisms such as Arm joints, Elevators, Turrets, and Angle 
@@ -37,59 +39,18 @@ import edu.wpi.first.networktables.*;
 public abstract class MotorMechanismBase extends SubsystemBase {
 
     /**
-     * Motor Mechanism Settings
-     */
-    public class Settings {
-        // TODO Allow RateControl Feed Forward settings to change for dynamic loads
-        // TODO allow soft limits to change
-        public final String name;                           /**< Mechanism Name */
-        public final String tab_name;                       /**< ShuffleBoard tab name */
-        public final PositionController.Settings pos_ctrl;  /**< Position Controller settings */
-        public final RateController.Settings[] rate_ctrls;  /**< List of Rate Controller settings */
-        public final Limits[] soft_limits;                  /**< List of soft limits */
-        public final Limits def_tol;                        /**< Default acceptable distance range 
-                                                                 around target to be considered 
-                                                                 "at target" */
-
-        /**
-         * Constructor
-         * @param   name        Name of the mechanism
-         * @param   tab_name    ShuffleBoard tab name
-         * @param   pos_ctrl    Position Controller settings
-         * @param   rate_ctrls  List of Rate Controller settings
-         * @param   soft_limits List of soft limits
-         * @param   def_tol     Default acceptable distance range around target to be considered 
-         *                          "at target"
-         */
-        public Settings(String name, String tab_name, PositionController.Settings pos_ctrl, 
-                        RateController.Settings[] rate_ctrls, Limits[] soft_limits, Limit def_tol) {
-            this.name = name;
-            this.tab_name = tab_name;
-            this.pos_ctrl = pos_ctrl;
-            this.rate_ctrls = rate_ctrls;
-            this.soft_limits = soft_limits;
-            this.def_tol = def_tol;
-        }
-
-        // TODO add different default permutations of constructor
-    }
-
-    /**
      * Hold Position Command
      */
     public class HoldPositionCommand extends Command {
-        private final MotorMechanismBase mechanism;     /**< Mechanism object reference */
         private double target;                          /**< Target Position to hold */
 
         /**
          * Constructor
-         * @param   mechanism   Mechanism object reference
          */
-        public HoldPositionCommand(MotorMechanismBase mechanism) {
-            this.mechanism = mechanism;
-            target = mechanism.getPosition();
+        public HoldPositionCommand() {
+            target = getPosition();
 
-            addRequirements(mechanism);
+            addRequirements(MotorMechanismBase.this);
         }
 
         /**
@@ -97,7 +58,7 @@ public abstract class MotorMechanismBase extends SubsystemBase {
          */
         @Override
         public void initialize() {
-            target = mechanism.getPosition();
+            target = getPosition();
         }
 
         /**
@@ -105,7 +66,7 @@ public abstract class MotorMechanismBase extends SubsystemBase {
          */
         @Override
         public void execute() {
-            mechanism.getPosTrackingRate(target);
+            getPosTrackingRate(target);
         }
     }
 
@@ -113,19 +74,16 @@ public abstract class MotorMechanismBase extends SubsystemBase {
      * Set Voltage Command
      */
     public class SetVoltageCommand extends Command {
-        private final MotorMechanismBase mechanism;     /**< Mechanism object reference */
         private double target_voltage;                  /**< Target voltage for the mechanism */
 
         /**
          * Constructor
-         * @param   mechanism       Mechanism object reference
          * @param   target_voltage  Target voltage for the mechanism
          */
-        public SetVoltageCommand(MotorMechanismBase mechanism, double target_voltage) {
-            this.mechanism = mechanism;
+        public SetVoltageCommand(double target_voltage) {
             this.target_voltage = target_voltage;
 
-            addRequirements(mechanism);
+            addRequirements(MotorMechanismBase.this);
         }
 
         /**
@@ -133,7 +91,7 @@ public abstract class MotorMechanismBase extends SubsystemBase {
          */
         @Override
         public void execute() {
-            mechanism.updateVoltage(target_voltage);
+            updateVoltage(target_voltage);
         }
 
         /**
@@ -149,19 +107,16 @@ public abstract class MotorMechanismBase extends SubsystemBase {
      * Set Rate Command
      */
     public class SetRateCommand extends Command {
-        private final MotorMechanismBase mechanism;     /**< Mechanism object reference */
         private double target_rate;                     /**< Target rate for the mechanism */
 
         /**
          * Constructor
-         * @param   mechanism       Mechanism object reference
          * @param   target_rate     Target rate for the mechanism
          */
-        public SetRateCommand(MotorMechanismBase mechanism, double target_rate) {
-            this.mechanism = mechanism;
+        public SetRateCommand(double target_rate) {
             this.target_rate = target_rate;
 
-            addRequirements(mechanism);
+            addRequirements(MotorMechanismBase.this);
         }
 
         /**
@@ -169,7 +124,7 @@ public abstract class MotorMechanismBase extends SubsystemBase {
          */
         @Override
         public void execute() {
-            mechanism.updateRate(target_rate);
+            updateRate(target_rate);
         }
 
         /**
@@ -177,7 +132,7 @@ public abstract class MotorMechanismBase extends SubsystemBase {
          */
         @Override
         public boolean isFinished() {
-            return target_rate == 0 || mechanism.atLimit();
+            return target_rate == 0 || atLimit();
         }
 
         /**
@@ -193,7 +148,6 @@ public abstract class MotorMechanismBase extends SubsystemBase {
      * Set Position Command
      */
     public class SetPositionCommand extends Command {
-        private final MotorMechanismBase mechanism;     /**< Mechanism object reference */
         private double target;                          /**< Target position for the mechanism */
         private final Limits tol;                       /**< Acceptable distance from target 
                                                              position to consider mechanism "at target" */
@@ -203,61 +157,60 @@ public abstract class MotorMechanismBase extends SubsystemBase {
          * Constructor.
          *      - tol is set to def_tol of the mechanism
          *      - auto_complete is set to true
-         * @param   mechanism       Mechanism object reference
          * @param   target          Target position for the mechanism
          */
-        public SetPositionCommand(MotorMechanismBase mechanism, double target) {
-            this.mechanism = mechanism;
+        public SetPositionCommand(double target) {
             this.target = target;
-            this.tol = mechanism.settings.def_tol;
+            this.tol = settings.def_tol;
             this.auto_complete = true;
 
-            addRequirements(mechanism);
+            addRequirements(MotorMechanismBase.this);
         }
 
         /**
          * Constructor
          *      - auto_complete is set to true
-         * @param   mechanism       Mechanism object reference
          * @param   target          Target position for the mechanism
          * @param   tol             Acceptable distance from target position to consider mechanism
          *                              "at target"
          */
-        public SetPositionCommand(MotorMechanismBase mechanism, double target, double tol) {
-            this.mechanism = mechanism;
+        public SetPositionCommand(double target, Limits tol) {
             this.target = target;
             this.tol = tol;
             this.auto_complete = true;
-        }
-        /**
-         * Constructor
-         *      - tol is set to def_tol of the mechanism
-         * @param   mechanism       Mechanism object reference
-         * @param   target          Target position for the mechanism
-         * @param   auto_complete   Command automatically finishes when "at target" if true. 
-         *                              Continues indefinitely if false.  
-         */
-        public SetPositionCommand(MotorMechanismBase mechanism, double target, boolean auto_complete) {
-            this.mechanism = mechanism;
-            this.target = target;
-            this.tol = mechanism.settings.def_tol;
-            this.auto_complete = auto_complete;
+
+            addRequirements(MotorMechanismBase.this);
         }
 
         /**
          * Constructor
-         * @param   mechanism       Mechanism object reference
+         *      - tol is set to def_tol of the mechanism
+         * @param   target          Target position for the mechanism
+         * @param   auto_complete   Command automatically finishes when "at target" if true. 
+         *                              Continues indefinitely if false.  
+         */
+        public SetPositionCommand(double target, boolean auto_complete) {
+            this.target = target;
+            this.tol = settings.def_tol;
+            this.auto_complete = auto_complete;
+
+            addRequirements(MotorMechanismBase.this);
+        }
+
+        /**
+         * Constructor
          * @param   target          Target position for the mechanism
          * @param   tol             Acceptable distance from target position to consider mechanism
          *                              "at target"
          * @param   auto_complete   Command automatically finishes when "at target" if true. 
          *                              Continues indefinitely if false.  
          */
-        public SetPositionCommand(MotorMechanismBase mechanism, double target, double tol, boolean auto_complete) {
-            this.mechanism = mechanism;
+        public SetPositionCommand(double target, Limits tol, boolean auto_complete) {
             this.target = target;
             this.tol = tol;
             this.auto_complete = auto_complete;
+
+            addRequirements(MotorMechanismBase.this);
         }
 
         /**
@@ -265,8 +218,8 @@ public abstract class MotorMechanismBase extends SubsystemBase {
          */
         @Override
         public void execute() {
-            double target_rate = mechanism.getPosTrackingRate(target);
-            mechanism.setRate(target_rate);
+            double target_rate = getPosTrackingRate(target);
+            setRate(target_rate);
         }
 
         /**
@@ -274,10 +227,7 @@ public abstract class MotorMechanismBase extends SubsystemBase {
          */
         @Override
         public boolean isFinished() {
-            double current_pos = mechanism.getPosition();
-            double error = current_pos - target;
-            
-            return auto_complete && atTarget() && mechanism.atLimit();
+            return auto_complete && atTarget() && atLimit();
         }
 
         /**
@@ -293,23 +243,24 @@ public abstract class MotorMechanismBase extends SubsystemBase {
          * @return  true if mechanism is at the target position
          */
         public boolean atTarget() {
+            double current_pos = getPosition();
+            double error = current_pos - target;
+
             return tol.inRange(error);
         }
     }
     
-    public final Settings settings;                 /**< Mechanism settings */
-    public final int motor_count;                   /**< Number of motors in the list */
+    public final MotorMechanismBaseSettings settings;   /**< Mechanism settings */
+    public final int motor_count;                       /**< Number of motors in the list */
 
-    public final PositionController pos_ctrl;       /**< Position Controller */
-    public final RateController[] rate_ctrls;       /**< Rate Controller */
-    public int cur_rate_ctrl;                       /**< Current rate controller index */
+    public final PositionController pos_ctrl;           /**< Position Controller */
+    public final RateController[] rate_ctrls;           /**< Rate Controller */
+    public int cur_stage;                               /**< Current stage index */
 
-    public int cur_soft_limits;                     /**< Current soft limit index */
-
-    public final HoldPositionCommand hold_pos_cmd;  /**< Internal hold position command */
-    public final SetVoltageCommand set_voltage_cmd; /**< Internal set voltage command */
-    public final SetRateCommand set_rate_cmd;       /**< Internal set rate command */
-    public final SetPositionCommand set_pos_cmd;    /**< Internal set position command */
+    public final HoldPositionCommand hold_pos_cmd;      /**< Internal hold position command */
+    public final SetVoltageCommand set_voltage_cmd;     /**< Internal set voltage command */
+    public final SetRateCommand set_rate_cmd;           /**< Internal set rate command */
+    public final SetPositionCommand set_pos_cmd;        /**< Internal set position command */
 
     // ShuffleBoard
     protected final ShuffleboardLayout sb_layout;
@@ -329,51 +280,49 @@ public abstract class MotorMechanismBase extends SubsystemBase {
      * Constructor
      * @param   settings    Mechanism Settings
      */
-    public MotorMechanismBase(Settings settings, int motor_count) {
+    public MotorMechanismBase(MotorMechanismBaseSettings settings, int motor_count) {
         this.settings = settings;
         this.motor_count = motor_count;
 
         // Initialize Controllers
         pos_ctrl = new PositionController(settings.pos_ctrl);
 
-        int rate_ctrl_count = settings.rate_ctrls.length;
+        int rate_ctrl_count = settings.stage_settings.length;
         rate_ctrls = new RateController[rate_ctrl_count];
 
         for(int i = 0; i < rate_ctrl_count; i++) {
-            rate_ctrls[i] = new RateController(settings.rate_ctrls[i]);
+            rate_ctrls[i] = new RateController(settings.stage_settings[i].rate_ctrl);
         }
 
-        cur_rate_ctrl = 0;
-
-        // Initialize Soft Limits
-        cur_soft_limits = 0;
+        // Initialize Stage Index
+        cur_stage = 0;
 
         // Initialize ShuffleBoard
         sb_layout = Shuffleboard.getTab(settings.tab_name)
             .getLayout(settings.name, BuiltInLayouts.kList)
             .withSize(1, 4);
 
-        sb_position = layout.add("Position", getPosition()).getEntry();
-        sb_rate = layout.add("Rate", getRate()).getEntry();
+        sb_position = sb_layout.add("Position", getPosition()).getEntry();
+        sb_rate = sb_layout.add("Rate", getRate()).getEntry();
 
         sb_voltages = new GenericEntry[motor_count];
         sb_currents = new GenericEntry[motor_count];
 
-        for(i = 0; i < motor_count; i++) {
-            sb_voltages[i] = layout.add("Motor " + i + " Voltage", getVoltage(i)).getEntry();
-            sb_currents[i] = layout.add("Motor " + i + " Current", getCurrent(i)).getEntry();
+        for(int i = 0; i < motor_count; i++) {
+            sb_voltages[i] = sb_layout.add("Motor " + i + " Voltage", getMotorVoltage(i)).getEntry();
+            sb_currents[i] = sb_layout.add("Motor " + i + " Current", getMotorCurrent(i)).getEntry();
         }
 
-        sb_atLowerLimitSensor = layout.add("Position", atLowerLimitSensor()).getEntry();
-        sb_atLowerSoftLimit = layout.add("Position", atLowerSoftLimit()).getEntry();
-        sb_atUpperLimitSensor = layout.add("Position", atUpperLimitSensor()).getEntry();
-        sb_atUpperSoftLimit = layout.add("Position", atUpperSoftLimit()).getEntry();
+        sb_atLowerLimitSensor = sb_layout.add("Position", atLowerLimitSensor()).getEntry();
+        sb_atLowerSoftLimit = sb_layout.add("Position", atLowerSoftLimit()).getEntry();
+        sb_atUpperLimitSensor = sb_layout.add("Position", atUpperLimitSensor()).getEntry();
+        sb_atUpperSoftLimit = sb_layout.add("Position", atUpperSoftLimit()).getEntry();
 
         // Initialize commands
-        hold_pos_cmd = new HoldPositionCommand(this);
-        set_voltage_cmd = new SetVoltageCommand(this);
-        set_rate_cmd = new SetRateCommand(this, 0);
-        set_pos_cmd = new SetPositionCommand(this, getPosition(), false);
+        hold_pos_cmd = new HoldPositionCommand();
+        set_voltage_cmd = new SetVoltageCommand(0);
+        set_rate_cmd = new SetRateCommand(0);
+        set_pos_cmd = new SetPositionCommand(getPosition(), false);
 
         // Set Default Command
         setDefaultCommand(hold_pos_cmd);
@@ -385,19 +334,11 @@ public abstract class MotorMechanismBase extends SubsystemBase {
     /**************************/
 
     /**
-     * Get the current rate controller index
-     * @return current rate controller index
+     * Get the current stage index
+     * @return current stage index
      */
-    public int getRateCtrlIndex() {
-        return cur_rate_ctrl;
-    }
-
-    /**
-     * Get the current soft limit index
-     * @return current soft limit index
-     */
-    public int getSoftLimitsIndex() {
-        return cur_soft_limits;
+    public int getStageIndex() {
+        return cur_stage;
     }
 
     /**
@@ -405,7 +346,7 @@ public abstract class MotorMechanismBase extends SubsystemBase {
      * @return  current soft limits
      */
     public Limits getSoftLimits() {
-        return settings.soft_limits[cur_soft_limits];
+        return settings.stage_settings[cur_stage].soft_limits;
     }
 
     /**
@@ -414,7 +355,7 @@ public abstract class MotorMechanismBase extends SubsystemBase {
      */
     public boolean atLowerSoftLimit() {
         
-        return !settings.is_cont && getSoftLimits().inLower(getPosition());
+        return !pos_ctrl.settings.is_cont && getSoftLimits().inLower(getPosition());
     }
 
     /**
@@ -422,7 +363,7 @@ public abstract class MotorMechanismBase extends SubsystemBase {
      * @return  true if at limit
      */
     public boolean atUpperSoftLimit() {
-        return !settings.is_cont && getSoftLimits().inUpper(getPosition());;
+        return !pos_ctrl.settings.is_cont && getSoftLimits().inUpper(getPosition());
     }
 
     /**
@@ -462,7 +403,7 @@ public abstract class MotorMechanismBase extends SubsystemBase {
      * @return  true if at limit
      */
     public boolean atLimit() {
-        return atLowerLimitSwitch();
+        return atLowerLimitSensor();
     }
 
     /**
@@ -485,21 +426,15 @@ public abstract class MotorMechanismBase extends SubsystemBase {
     /* Public Control Methods */
     /**************************/
 
-    /**
-     * Selects the active rate controller. If selected rate controller does not exist, nothing 
-     * changes.
-     * @param   index   new rate controller index
-     */
-    public void setRateCtrlIndex(int index) {
-        if(0 <= index && index < rate_ctrls.length) cur_rate_ctrl = index;
-    }
+
 
     /**
-     * Select active soft limits. If selected soft limits do not exist, nothing changes.
-     * @param   index   new soft limit index index
+     * Selects the active mechanism stage. If selected stage does not exist, nothing 
+     * changes.
+     * @param   index   new stage index
      */
-    public void setSoftLimitIndex(int index) {
-        if(0 <= index && index < soft_limits.size()) cur_soft_limits = index;
+    public void setStageIndex(int index) {
+        if(0 <= index && index < rate_ctrls.length) cur_stage = index;
     }
 
     /**
@@ -539,53 +474,8 @@ public abstract class MotorMechanismBase extends SubsystemBase {
      */
     public void holdPosition() {
         Command current_cmd = getCurrentCommand();
-        if(current_cmd != getDefaultCommand()) cur_command.cancel();
+        if(current_cmd != getDefaultCommand()) current_cmd.cancel();
     }
-
-    
-    /******************************/
-    /* Command Generation Methods */
-    /******************************/
-
-    /**
-     * Generate a set position command. Mechanism default tolerances used.
-     * @param   target  target position
-     * @return  set position command
-     */
-    public SetPositionCommand getSetPositionCommand(double target) {
-        return new SetPositionCommand(this, target);
-    }
-
-    /**
-     * Generate a set position command
-     * @param   target      target position
-     * @param   tolerance   distance from the target position that is considered "at target"
-     * @return  set position command
-     */
-    public SetPositionCommand getSetPositionCommand(double target, Limit tolerance) {
-        return new SetPositionCommand(this, target, tolerance);
-    }   
-
-    /**
-     * Generate a set position command
-     * @param   target          target position
-     * @param   auto_complete   If true, command automatically finishes when atTarget is true.
-     * @return  set position command
-     */
-    public SetPositionCommand getSetPositionCommand(double target, boolean auto_complete) {
-        return new SetPositionCommand(this, target, auto_complete);
-    }   
-
-    /**
-     * Generate a set position command
-     * @param   target      target position
-     * @param   tolerance   distance from the target position that is considered "at target"
-     * @param   auto_complete   If true, command automatically finishes when atTarget is true.
-     * @return  set position command
-     */
-    public SetPositionCommand getSetPositionCommand(double target, Limit tolerance, boolean auto_complete) {
-        return new SetPositionCommand(this, target, tolerance, auto_complete);
-    }   
 
     /*****************************/
     /* Protected Control Methods */
@@ -617,7 +507,7 @@ public abstract class MotorMechanismBase extends SubsystemBase {
             if(atUpperLimit() && target_rate > 0) target_rate = 0;
         }
         
-        updateVoltage(rate_ctrls[cur_rate_ctrl].update(current_pos, current_rate, target_rate));
+        updateVoltage(rate_ctrls[cur_stage].update(current_pos, current_rate, target_rate));
     }
 
     protected void updateVoltage(double voltage) {
@@ -673,8 +563,8 @@ public abstract class MotorMechanismBase extends SubsystemBase {
     /********************/
     public abstract double getPosition();
     public abstract double getRate();
-    public abstract double getMotorVoltage();
-    public abstract double getMotorCurrent();
+    public abstract double getMotorVoltage(int i);
+    public abstract double getMotorCurrent(int i);
 
     public boolean atLowerLimitSensor() { return false; }
     public boolean atUpperLimitSensor() { return false; }

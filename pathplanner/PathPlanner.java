@@ -20,17 +20,17 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
- package frc.lib2960_pathplanner;
+ package frc.lib2960.pathplanner;
 
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.shuffleboard.BuiltInLayouts;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj2.command.Command;
 
-import com.pathplanner.lib.auto.AutoBuilder;
-import com.pathplanner.lib.auto.NamedCommands;
-import com.pathplanner.lib.config.PIDConstants;
-import com.pathplanner.lib.controllers.PPHolonomicDriveController;
-import com.pathplanner.lib.commands.PathPLannerAuto;
-import com.pathplanner.lib.util.*;
+import com.pathplanner.lib.auto.*;
+import com.pathplanner.lib.config.*;
+import com.pathplanner.lib.controllers.*;
 
 import frc.lib2960.subsystems.*;
 import frc.lib2960.util.*;
@@ -47,7 +47,7 @@ public class PathPlanner {
      * @param   dt          Differential drivetrain object reference
      * @param   delta_t     Update period
      */
-    public static init(DiffDriveBase dt, double delta_t){
+    public static void init(DiffDriveBase dt, double delta_t){
         // TODO Allow other implementations
         PPLTVController controller = new PPLTVController(delta_t);
         
@@ -61,7 +61,7 @@ public class PathPlanner {
      * @param   translation Translation PID parameters
      * @param   rotation    Rotation PID parameters
      */
-    public static init(SwerveDriveBase dt, PIDParam translation, PIDParam rotation) {
+    public static void init(SwerveDriveBase dt, PIDParam translation, PIDParam rotation) {
         // Create Holonomic controller
         PPHolonomicDriveController controller =  new PPHolonomicDriveController(
             toPIDConstants(translation),
@@ -77,36 +77,36 @@ public class PathPlanner {
      * @param   dt          drivetrain object reference
      * @param   controller  PathPlanner controller object
      */
-    public static init(Drivetrain dt, PathFollowingController controller) {
+    public static void init(Drivetrain dt, PathFollowingController controller) {
         // Initialize robot config from GUI Settings
         RobotConfig config;
         try{
-          config = RobotConfig.fromGUISettings();
+            config = RobotConfig.fromGUISettings();
+
+            // Initialize Autobuilder
+            AutoBuilder.configure(
+                dt::getEstimatedPos,
+                dt::resetPoseEst,
+                dt::getRobotRelativeSpeeds,
+                (speeds, feedforwards) -> dt.setRobotRelativeSpeeds(speeds),
+                controller,
+                config,
+                PathPlanner::isRedAlliance,
+                dt
+            );
+    
+            // Initialize Shuffleboard
+            // TODO Allow a default auton to be set
+            autoChooser = AutoBuilder.buildAutoChooser();
+    
+            var layout = Shuffleboard.getTab("Main")
+                .getLayout("Auton", BuiltInLayouts.kList)
+                .withSize(1, 4);
+            layout.add("Auton Selector", autoChooser);
         } catch (Exception e) {
           // Handle exception as needed
           e.printStackTrace();
         }
-
-        // Initialize Autobuilder
-        AutoBuilder.configure(
-            dt::getEstimatedPos,
-            dt::resetPoseEst,
-            dt::getRobotRelativeSpeeds,
-            dt::setRobotRelativeSpeeds,
-            controller,
-            config,
-            PathPlanner::isRedAlliance,
-            dt
-        );
-
-        // Initialize Shuffleboard
-        // TODO Allow a default auton to be set
-        autoChooser = AutoBuilder.buildAutoChooser();
-
-        var layout = Shuffleboard.getTab("Main")
-            .getLayout("Auton", BuiltInLayouts.kList)
-            .withSize(1, 4);
-        layout.add("Auton Selector", autoChooser);
     }
 
     /**
@@ -122,7 +122,7 @@ public class PathPlanner {
      * @param   name    Name of the command to register
      * @param   command Command object to register
      */
-    public static registerCommand(String name, Command command) {
+    public static void registerCommand(String name, Command command) {
          NamedCommands.registerCommand(name, command);
     }
     
@@ -143,7 +143,7 @@ public class PathPlanner {
         boolean result = false;
         var alliance = DriverStation.getAlliance();
 
-        if(alliance.is_present()) result = alliance.get() == DriverStation.Alliance.Red;
+        if(alliance.isPresent()) result = alliance.get() == DriverStation.Alliance.Red;
 
         return result;
     }

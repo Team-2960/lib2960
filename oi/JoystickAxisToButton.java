@@ -46,6 +46,7 @@ public class JoystickAxisToButton extends ButtonBase {
         this.joystick = joystick;
         this.axis = axis;
         this.pressed_range = pressed_range;
+        this.invert = invert;
     }
 
     /**
@@ -56,7 +57,10 @@ public class JoystickAxisToButton extends ButtonBase {
      * @param   invert          Inverts the axis direction
      */
     public JoystickAxisToButton(Joystick joystick, int axis, double threshold, boolean invert) {
-        JoystickAxisToButton(joystick, axis, new Limits(threshold, Double.MAX_VALUE), invert);
+        this.joystick = joystick;
+        this.axis = axis;
+        this.pressed_range = new Limits(threshold, Double.MAX_VALUE);
+        this.invert = invert;
     }
 
     /**
@@ -67,7 +71,10 @@ public class JoystickAxisToButton extends ButtonBase {
      * @param   invert          Inverts the axis direction
      */
     public JoystickAxisToButton(Joystick joystick, int axis, boolean invert) {
-        JoystickAxisToButton(joystick, axis, 0.5, invert);
+        this.joystick = joystick;
+        this.axis = axis;
+        this.pressed_range = new Limits(0.5, Double.MAX_VALUE);
+        this.invert = invert;
     }
 
     /**
@@ -78,7 +85,10 @@ public class JoystickAxisToButton extends ButtonBase {
      * @param   pressed_range   Range of values considered pressed
      */
     public JoystickAxisToButton(Joystick joystick, int axis, Limits pressed_range) {
-        JoystickAxisToButton(joystick, axis, pressed_range, false);
+        this.joystick = joystick;
+        this.axis = axis;
+        this.pressed_range = pressed_range;
+        this.invert = false;
     }
 
     /**
@@ -89,7 +99,10 @@ public class JoystickAxisToButton extends ButtonBase {
      * @param   threshold       Minimum value considered pressed
      */
     public JoystickAxisToButton(Joystick joystick, int axis, double threshold) {
-        JoystickAxisToButton(joystick, axis, new Limits(threshold, Double.MAX_VALUE), false);
+        this.joystick = joystick;
+        this.axis = axis;
+        this.pressed_range = new Limits(threshold, Double.MAX_VALUE);
+        this.invert = false;
     }
 
     /**
@@ -100,7 +113,10 @@ public class JoystickAxisToButton extends ButtonBase {
      * @param   axis            Index of the axis on the joystick
      */
     public JoystickAxisToButton(Joystick joystick, int axis) {
-        JoystickAxisToButton(joystick, axis, 0.5, false);
+        this.joystick = joystick;
+        this.axis = axis;
+        this.pressed_range = new Limits(0.5, Double.MAX_VALUE);
+        this.invert = false;
     }
 
 
@@ -110,6 +126,12 @@ public class JoystickAxisToButton extends ButtonBase {
     */
     @Override
     public boolean pressed() {
-        return pressed_range.inRange(joystick.getRawAxis(button));
+        // Check if joystick is in the "pressed" ranged
+        boolean result = invert ^ pressed_range.inRange(joystick.getRawAxis(axis));
+
+        // Invert the result if invert is true
+        result = invert ^ result;
+
+        return result;
     }
 }

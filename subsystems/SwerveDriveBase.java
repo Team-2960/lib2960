@@ -20,64 +20,39 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
- package frc.lib2960.subsystems;
+package frc.lib2960.subsystems;
 
 import frc.lib2960.util.*;
 import frc.lib2960.controllers.*;
-
+import frc.lib2960.pathplanner.PathPlanner;
+import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.Vector;
 import edu.wpi.first.math.geometry.*;
 import edu.wpi.first.wpilibj2.command.*;
 import edu.wpi.first.math.kinematics.*;
+import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.networktables.*;
-
+import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.shuffleboard.BuiltInLayouts;
+import edu.wpi.first.wpilibj.shuffleboard.ComplexWidget;
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
+import edu.wpi.first.wpilibj.smartdashboard.FieldObject2d;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 
-public abstract class SwerveDriveBase extends SubsystemBase implements Drivetrain {
-    /**
-     * Robot drivetrain settings
-     */
-    public class Settings {
-        public final double max_drive_speed;    /**< Maximum speed of the robot drivetrain */
-        public final double max_angle_rate;     /**< Maximum angle rate of the robot */
-        
-        public final double tracking_angle_accel;   /**< Angle tracking angle acceleration */
-        public final double tracking_angle_decel;   /**< Angle tracking angle deceleration */
-
-        /**
-         * Constructor
-         * @param   max_drive_speed         maximum drive speed of the robot drivetrain
-         * @param   max_angle_rate          maximum angle rate of the robot drivetrain
-         * @param   tracking_angle_accel    angle tracking angle acceleration of the robot 
-         *                                      drivetrain
-         * @param   tracking_angle_decel    angle tracking angle deceleration of the robot 
-         *                                      drivetrain
-         * #
-         */
-        public Settings(double max_drive_speed, double max_angle_rate, 
-                        double tracking_angle_accel, double tracking_angle_decel) {
-            this.max_drive_speed = max_drive_speed;
-            this.max_angle_rate = max_angle_rate;
-            this.tracking_angle_accel = tracking_angle_accel;
-            this.tracking_angle_decel = tracking_angle_decel;
-        }
-    }
-
+public abstract class SwerveDriveBase extends Drivetrain {
     /**
      * Command to run swerve drive by controlling the angle rate of the robot
      */
-    private class AngleRateCommand extends Command {
-        private final SwerveDriveBase dt;   /**< Drivetrain object reference */
+    public class AngleRateCommand extends Command {
 
         /**
          * Constructor
-         * @param   dt  Drivetrain object reference
          */
-        public AngleRateCommand(SwerveDriveBase dt) {
-            this.dt = dt;
-
+        public AngleRateCommand() {
             // Add drivetrain as required subsystem
-            addRequirements(dt);
+            addRequirements(SwerveDriveBase.this);
         }   
 
         /**
@@ -85,7 +60,7 @@ public abstract class SwerveDriveBase extends SubsystemBase implements Drivetrai
          */
         @Override
         public void execute() {
-            dt.updateKinematics(dt.desired_speeds);
+            updateKinematics(desired_speeds);
         }
 
     }
@@ -93,20 +68,17 @@ public abstract class SwerveDriveBase extends SubsystemBase implements Drivetrai
     /**
      * Command to track a desired angle
      */
-    private class AngleTrackCommand extends Command {
-        private final SwerveDriveBase dt;
+    public class AngleTrackCommand extends Command {
         private Rotation2d target;
         
         /**
          * Constructor
-         * @param   dt                  Drivetrain object reference
          * @param   target              Target angle to track
          */
-        public AngleTrackCommand(SwerveDriveBase dt, Rotation2d target) {
-            this.dt = dt;
+        public AngleTrackCommand(Rotation2d target) {
             this.target = target;
             
-            addRequirements(dt);
+            addRequirements(SwerveDriveBase.this);
         } 
 
 
@@ -116,12 +88,12 @@ public abstract class SwerveDriveBase extends SubsystemBase implements Drivetrai
         @Override
         public void execute() {
             ChassisSpeeds speeds = new ChassisSpeeds(
-                dt.desired_speeds.vxMetersPerSecond, 
-                dt.desired_speeds.vyMetersPerSecond,
-                dt.getAngleTrackingRate(target)
+                desired_speeds.vxMetersPerSecond, 
+                desired_speeds.vyMetersPerSecond,
+                getAngleTrackingRate(target)
             );
 
-            dt.updateKinematics(speeds);
+            updateKinematics(speeds);
         }
 
         /**
@@ -136,37 +108,32 @@ public abstract class SwerveDriveBase extends SubsystemBase implements Drivetrai
     /**
      * Command to track a desired position
      */
-    private class PointTrackCommand extends Command {
-        private final SwerveDriveBase dt;
-        private final Translation2d target;
-        private final Rotation2d offset;
+    public class PointTrackCommand extends Command {
+        private Translation2d target;
+        private Rotation2d offset;
         
         /**
          * Constructor. Offset is set to 0 degrees.
-         * @param   dt                  Drivetrain object reference
          * @param   target              Target point to track
          */
-        public PointTrackCommand(SwerveDriveBase dt, Translation2d target) {
-            this.dt = dt;
+        public PointTrackCommand(Translation2d target) {
             this.target = target;
             this.offset = new Rotation2d();
             
-            addRequirements(dt);
+            addRequirements(SwerveDriveBase.this);
         } 
         
         /**
          * Constructor
-         * @param   dt                  Drivetrain object reference
          * @param   target              Target point to track
          * @param   offset              Robot angle offset from target point
          * @param   is_field_relative   sets if the linear motions are field relative
          */
-        public PointTrackCommand(SwerveDriveBase dt, Translation2d target, Rotation2d offset) {
-            this.dt = dt;
+        public PointTrackCommand(Translation2d target, Rotation2d offset) {
             this.target = target;
             this.offset = offset;
 
-            addRequirements(dt);
+            addRequirements(SwerveDriveBase.this);
         } 
 
 
@@ -176,18 +143,18 @@ public abstract class SwerveDriveBase extends SubsystemBase implements Drivetrai
         @Override
         public void execute() {
             // Calculate target angle
-            Translation2d current = dt.getEstimatedPos().getTranslation();
+            Translation2d current = getEstimatedPos().getTranslation();
             Translation2d difference = target.minus(current);
             Rotation2d target_angle = difference.getAngle().plus(offset);
 
             // Update Kinematics
             ChassisSpeeds speeds = new ChassisSpeeds(
-                dt.desired_speeds.vxMetersPerSecond, 
-                dt.desired_speeds.vyMetersPerSecond,
-                dt.getAngleTrackingRate(target_angle)
+                desired_speeds.vxMetersPerSecond, 
+                desired_speeds.vyMetersPerSecond,
+                getAngleTrackingRate(target_angle)
             );
 
-            dt.updateKinematics(speeds);
+            updateKinematics(speeds);
         }
 
         /**
@@ -213,16 +180,13 @@ public abstract class SwerveDriveBase extends SubsystemBase implements Drivetrai
      * rolling freely.
      */
     public class CrossWheelsCommand extends Command {
-        private final SwerveDriveBase dt;   /**< Drivetrain object reference */
 
         /**
          * Constructor
          * @param   dt      Drivetrain object reference
          */
-        public CrossWheelsCommand(SwerveDriveBase dt) {
-            this.dt = dt;
-            
-            addRequirements(dt);
+        public CrossWheelsCommand() {
+            addRequirements(SwerveDriveBase.this);
         }
 
         /**
@@ -230,14 +194,14 @@ public abstract class SwerveDriveBase extends SubsystemBase implements Drivetrai
          */
         @Override
         public void initialize() {
-            dt.updateCrossWheels();
+            updateCrossWheels();
         }
 
     }
 
     // TODO implement TargetTrackCommand
 
-    private final Settings settings;                    /**< Drivetrain settings */
+    private final SwerveDriveBaseSettings settings;     /**< Drivetrain settings */
 
     private final SwerveModuleBase[] modules;           /**< List of drivetrain swerve modules */
 
@@ -279,39 +243,54 @@ public abstract class SwerveDriveBase extends SubsystemBase implements Drivetrai
      * @param   modules         list of module used in the drivetrain
      * @param   module_details  module details object for the drivetrain
      */
-    private SwerveDriveBase(Settings settings, SwerveModuleBase[] modules, ModuleDetails module_details) {
+    public SwerveDriveBase(SwerveDriveBaseSettings settings, SwerveModuleBase[] modules) {
         this.settings = settings;
         this.modules = modules;
-
-        // Get Module Positions
-        Translation2d module_positions[] = getModuleTranslation();
-
-        // Get Module States
-        SwerveModuleState module_states[] = new SwerveModuleStates[modules.size()];
-        for(int i = 0; i < modules.size(); i++) module_states[i] = modules.getState();
-
         
         // Initialize Kinematics
-        kinematics = new SwerveDriveKinematics(module_positions);
+        kinematics = new SwerveDriveKinematics(getModuleTranslation());
 
         // Initialize Pose Estimation
-        pose_est = new SwerveDrivePoseEstimator(kinematics, getAngle(), module_positions, new Pose2d(), 
-                                                VecBuilder.fill(0.05, 0.05, Units.degreesToRadians(5)),
-                                                VecBuilder.fill(0.5, 0.5, Units.degreesToRadians(30))
+        pose_est = new SwerveDrivePoseEstimator(
+            kinematics, 
+            getAngle(), 
+            getModulePositions(), 
+            new Pose2d(), 
+            VecBuilder.fill(0.05, 0.05, Units.degreesToRadians(5)),
+            VecBuilder.fill(0.5, 0.5, Units.degreesToRadians(30))
         );
         
         // Initialize angle tracking
-        PositionController.Settings angle_tracker_settings = new PositionController.Settings(
-            dt.settings.tracking_angle_accel,
-            dt.settings.tracking_angle_decel,
-            dt.settings.max_angle_rate,
-            0,
-            360,
-            true
+        PositionControllerSettings angle_tracker_settings = new PositionControllerSettings(
+            settings.tracking_angle_accel,
+            settings.tracking_angle_decel,
+            settings.max_angle_rate,
+            true,
+            new Limits(0, 360)
         );
 
         angle_tracker = new PositionController(angle_tracker_settings);
 
+        // Initialize internal commands
+        angle_rate_cmd = new AngleRateCommand();
+        angle_track_cmd = new AngleTrackCommand(new Rotation2d());
+        point_track_cmd = new PointTrackCommand(new Translation2d());
+        cross_wheels_cmd = new CrossWheelsCommand();
+
+        // Set default command
+        setDefaultCommand(angle_rate_cmd);
+
+        // Register Named Command with PathPlanner
+        PathPlanner.registerCommand("Cross Wheels", cross_wheels_cmd);
+
+        // Initialize Shuffleboard
+        init_ui();
+    }
+
+    /**
+     * Initializes Shuffleboard
+     */
+    private void init_ui() {
         // Initialize Shuffleboard
         var pose_layout = Shuffleboard.getTab("Drive")
                 .getLayout("Drive Pose", BuiltInLayouts.kList)
@@ -329,19 +308,7 @@ public abstract class SwerveDriveBase extends SubsystemBase implements Drivetrai
         sb_speedTargetR = pose_layout.add("Target Speed R", 0).getEntry();
 
         sb_field2d = Shuffleboard.getTab("Drive").add(field2d).withWidget("Field");
-
-        // Initialize internal commands
-        angle_rate_cmd = new AngleRateCommand(this);
-        angle_track_cmd = new AngleTrackCommand(this, new Rotation2d());
-        point_track_cmd = new PointTrackCommand(this, new Translation2d());
-        cross_wheels_cmd = new CrossWheelsCommand(this);
-
-        // Set default command
-        setDefaultCommand(angle_rate_cmd);
-
-        // Register Named Command with PathPlanner
-        PathPlanner.registerCommand("Cross Wheels", cross_wheels_cmd);
-    } 
+    }
 
 
     /*************************/
@@ -353,9 +320,9 @@ public abstract class SwerveDriveBase extends SubsystemBase implements Drivetrai
      * @return  list of module position translations
      */
     public Translation2d[] getModuleTranslation() {
-        Translation2d result[] = new Translation[modules.size()]; 
+        Translation2d result[] = new Translation2d[modules.length]; 
         
-        for(int i = 0; i < modules.size(); i++) result[i] = modules.settings.Translation;
+        for(int i = 0; i < modules.length; i++) result[i] = modules[i].settings.translation;
         
         return result;
     }
@@ -365,9 +332,9 @@ public abstract class SwerveDriveBase extends SubsystemBase implements Drivetrai
      * @return  list of module states
      */
     public SwerveModuleState[] getModuleStates() {
-        SwerveModuleState result[] = new SwerveModuleStates[modules.size()];
+        SwerveModuleState result[] = new SwerveModuleState[modules.length];
 
-        for(int i = 0; i < modules.size(); i++) result[i] = modules.getState();
+        for(int i = 0; i < modules.length; i++) result[i] = modules[i].getState();
 
         return result;
     }
@@ -377,9 +344,9 @@ public abstract class SwerveDriveBase extends SubsystemBase implements Drivetrai
      * @return  list of module positions
      */
     public SwerveModulePosition[] getModulePositions() {
-        SwerveModulePosition result[] = new SwerveModulePosition[modules.size()];
+        SwerveModulePosition result[] = new SwerveModulePosition[modules.length];
 
-        for(int i = 0; i < modules.size(); i++) result[i] = modules.getPosition();
+        for(int i = 0; i < modules.length; i++) result[i] = modules[i].getPosition();
 
         return result;
     }
@@ -504,7 +471,7 @@ public abstract class SwerveDriveBase extends SubsystemBase implements Drivetrai
      * @return estimated robot pose
      */
     public Pose2d getEstimatedPos() {
-        return swerveDrivePoseEstimator.getEstimatedPosition();
+        return pose_est.getEstimatedPosition();
     }
 
     /**
@@ -516,11 +483,21 @@ public abstract class SwerveDriveBase extends SubsystemBase implements Drivetrai
     }
 
     /**
+     * Gets the current chassis speeds relative to the field
+     * @return current robot chassis speeds relative to the field
+     */
+    public ChassisSpeeds getFieldRelativeSpeeds() {
+        ChassisSpeeds speeds = getRobotRelativeSpeeds();
+        speeds.toFieldRelativeSpeeds(getAngle());
+        return speeds;
+    }
+
+    /**
      * Resets the estimated robot position
      * @param   new_pose    new estimated robot position
      */
     public void resetPoseEst(Pose2d new_pose) {
-        pose_est.reset(getAngle(), getModulePositions(), new_pose);
+        pose_est.resetPosition(getAngle(), getModulePositions(), new_pose);
         vision_updated = false;
     }
 
@@ -535,8 +512,7 @@ public abstract class SwerveDriveBase extends SubsystemBase implements Drivetrai
      * @param time_stamp    Timestamp of when the pose was captured
      */
     public void addVisionPose(Pose2d pose, double time_stamp) {
-        // TODO Adjust standard deviations based on distance from target
-        if (!ignoreCamera) {
+        if (!ignore_camera) {
             pose_est.addVisionMeasurement(pose, time_stamp);
             vision_updated = true;
         }
@@ -549,52 +525,10 @@ public abstract class SwerveDriveBase extends SubsystemBase implements Drivetrai
      * @param std_dev       Standard deviation values to use for the pose estimation
      */
     public void addVisionPose(Pose2d pose, double time_stamp, Vector<N3> std_dev) {
-        // TODO Adjust standard deviations based on distance from target
-        if (!ignoreCamera) {
+        if (!ignore_camera) {
             pose_est.addVisionMeasurement(pose, time_stamp, std_dev);
             vision_updated = true;
         }
-    }
-
-
-    /**************************/
-    /* Command Access Methods */
-    /**************************/
-
-    /**
-     * Creates an Angle Tracking Command
-     * @param   target              Target angle
-     * @return  new getAngleTrackCommand
-     */
-    public AngleTrackCommand getAngleTrackCommand(Rotation2d target) {
-        return new AngleTrackCommand(this, target);
-    }
-
-    /**
-     * Creates an Point Tracking Command
-     * @param   target              Target point
-     * @return  new getPointTrackCommand
-     */
-    public PointTrackCommand getPointTrackCommand(Translation2d target) {
-        return new PointTrackCommand(this, target);
-    }
-
-    /**
-     * Creates an Point Tracking Command
-     * @param   target              Target point
-     * @param   offset              Offset angle
-     * @return  new getPointTrackCommand
-     */
-    public PointTrackCommand getPointTrackCommand(Translation2d target, Rotation2d offset) {
-        return new PointTrackCommand(this, target, offset);
-    }
-
-    /**
-     * Creates CrossWheels Command
-     * @return  new CrossWheelsCommand
-     */
-    public CrossWheelsCommand getCrossWheelsCommand() {
-        return new CrossWheelsCommand(this);
     }
 
     /*********************************/
@@ -643,18 +577,19 @@ public abstract class SwerveDriveBase extends SubsystemBase implements Drivetrai
      */
     private void updateUI() {
         Pose2d pose = getEstimatedPos();
+        ChassisSpeeds speeds = getFieldRelativeSpeeds();
 
         sb_posEstX.setDouble(pose.getX());
         sb_posEstY.setDouble(pose.getY());
         sb_posEstR.setDouble(pose.getRotation().getDegrees());
 
-        sb_speedX.setDouble(xSpeed);
-        sb_speedY.setDouble(ySpeed);
-        sb_speedR.setDouble(rSpeed);
+        sb_speedX.setDouble(speeds.vxMetersPerSecond);
+        sb_speedY.setDouble(speeds.vyMetersPerSecond);
+        sb_speedR.setDouble(speeds.omegaRadiansPerSecond);
         sb_robotTargetAngle.setDouble(robotTargetAngle);
 
         field2d.setRobotPose(pose);
-        field2d.getObject("fieldTargetPoint").setPose(new Pose2d(target_point, Rotation2d.fromDegrees(0)));
+        field2d.getObject("fieldTargetPoint").setPose(new Pose2d(point_track_cmd.target, Rotation2d.fromDegrees(0)));
     }
 
     /**
@@ -663,19 +598,17 @@ public abstract class SwerveDriveBase extends SubsystemBase implements Drivetrai
      */
     private void updateKinematics(ChassisSpeeds speeds) {
         // Convert chassis speeds from field relative to robot relative if in field relative mode
-        if(is_field_relative) {
-            speeds = ChassisSpeeds.fromFieldRelativeSpeeds(speeds, getEstimatedPos().getRotation());
-        }
+        if(is_field_relative) speeds.toRobotRelativeSpeeds(getEstimatedPos().getRotation());
 
         // Discretize chassis speeds
         // TODO Set update period from global settings
-        speeds = ChassisSpeeds.discretize(speeds, TimeRobot.kDefaultPeriod);
+        speeds.discretize(TimedRobot.kDefaultPeriod);
 
         // Update Swerve Modules
         var module_states = kinematics.toSwerveModuleStates(speeds);
-        SwerveDriveKinematics.desaturateWheelSpeeds(module_states, Constants.max_drive_speed);
+        SwerveDriveKinematics.desaturateWheelSpeeds(module_states, settings.max_drive_speed);
 
-        for(int i = 0; i < modules.size(); i++) modules[i].setDesiredState(module_states[i]);
+        for(int i = 0; i < modules.length; i++) modules[i].setDesiredState(module_states[i]);
     }
 
     /**

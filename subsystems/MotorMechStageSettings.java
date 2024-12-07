@@ -20,32 +20,17 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package frc.lib2960.oi;
+package frc.lib2960.subsystems;
 
-/**
- * Button group for and-ing buttons together
- */
-public class ButtonAndGroup extends ButtonBase {
-    private ButtonBase[] buttons;   /**< Buttons in the group */
+import frc.lib2960.controllers.RateControllerSettings;
+import frc.lib2960.util.Limits;
 
-    /**
-     * Constructor
-     * @param   buttons     Buttons in the group
-     */
-    public ButtonAndGroup(ButtonBase... buttons) {
-        this.buttons = buttons;
-    }
+public class MotorMechStageSettings {
+    public final RateControllerSettings rate_ctrl;
+    public final Limits soft_limits;
 
-    /**
-     * Check if the button is pressed.
-     * @return  true if all buttons are pressed
-     */
-    @Override
-    public boolean pressed() {
-        boolean result = true;
-
-        for(var button: buttons) result &= button.pressed();
-
-        return result;
+    public MotorMechStageSettings(RateControllerSettings rate_ctrl, Limits soft_limits){
+        this.rate_ctrl = rate_ctrl;
+        this.soft_limits = soft_limits;
     }
 }

@@ -20,9 +20,8 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
- package frc.lib2960.subsystems;
+package frc.lib2960.subsystems;
 
-import frc.lib2960.util.*;
 import frc.lib2960.controllers.*;
 
 import edu.wpi.first.math.geometry.*;
@@ -31,69 +30,27 @@ import edu.wpi.first.wpilibj2.command.*;
 
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.networktables.GenericEntry;
+import edu.wpi.first.wpilibj.shuffleboard.BuiltInLayouts;
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 
 /**
  * Abstract class containing most of the control necessary for a swerve drive module. It is 
  * designed to be used as a parent class for a swerve drive module class that implements access 
  * to the motors and sensors of the swerve module.
  */
-public abstract class SwerveDriveBase extends SubsystemBase {
-    /**
-     * Defines module settings
-     */
-    public class Settings {
-        
-        public String name;                 /**< Human friendly module name */
-        public Translation2d translation;   /**< Module translation */
-
-        public final double drive_ratio;    /**< Module drive gear ratio */
-        public final double wheel_radius;   /**< Module drive wheel radius in meters */
-
-        PositionController.Settings anglePosCtrl;   /**< Module Angle Pos Controller */
-        RateController.Settings angleRateCtrl;      /**< Module Angle Rate Controller */
-        RateController.Settings driveRateCtrl;      /**< Module Drive Rate controller */
-
-        /**
-         * Constructor
-         * @param   name            Module name
-         * @param   translation     Module Translation
-         * @param   drive_ratio     Drive gear ratio
-         * @param   wheel_radius    Drive wheel radius
-         * @param   anglePosCtrl    Module Angle Pos Controller Settings
-         * @param   angleRateCtrl   Module Angle Rate Controller Settings
-         * @param   driveCtrl       Module Drive Rate Controller Settings
-         */
-        public Settings(String name, Translation2d translation, 
-                        double drive_ratio, double wheel_radius,
-                        PositionController.Settings anglePosCtrl, 
-                        RateController.Settings angleRateCtrl, 
-                        RateController.Settings driveRateCtrl) {
-
-            this.name = name;
-            this.translation = translation;
-            this.drive_ratio = drive_ratio;
-            this.wheel_radius = wheel_radius;
-            this.anglePosCtrl = anglePosCtrl;
-            this.angleRateCtrl = angleRateCtrl;
-            this.driveRateCtrl = driveRateCtrl;
-        }
-    }
-
+public abstract class SwerveModuleBase extends SubsystemBase {
     /**
      * Automatic Swerve Drive Module Control Command
      */
-    public class AutoCommand extends Command {
-        private final SwerveDriveBase module;   /**< Module to control */
-        
+    public class AutoCommand extends Command {        
         /**
          * Constructor
-         * @param   module  module for command to control
          */
-        public AutoCommand(SwerveDriveBase module) {
-            this.module = module;
+        public AutoCommand() {
 
             // Add module as required subsystem 
-            addRequirements(module);
+            addRequirements(SwerveModuleBase.this);
         }
 
         /**
@@ -101,18 +58,18 @@ public abstract class SwerveDriveBase extends SubsystemBase {
          */
         @Override
         public void execute() {
-            module.updateAutoControl();
+            updateAutoControl();
         }
 
     }
 
-    private final Settings settings;                /**< Module Settings */
+    public final SwerveModuleBaseSettings settings;     /**< Module Settings */
 
-    private final PositionController anglePosCtrl;  /**< Module Angle Position Controller */
-    private final RateController angleRateCtrl;     /**< Module Angle Rate Controller */
-    private final RateController driveRateCtrl;     /**< Module Drive Controller */
+    private final PositionController angle_pos_ctrl;    /**< Module Angle Position Controller */
+    private final RateController angle_rate_ctrl;       /**< Module Angle Rate Controller */
+    private final RateController drive_rate_ctrl;       /**< Module Drive Controller */
 
-    private SwerveModuleState desiredState;         /**< Most recent Module Desired State */
+    private SwerveModuleState desired_state;            /**< Most recent Module Desired State */
 
     // Shuffleboard Elements
     private GenericEntry sb_anglePosTarget;
@@ -129,20 +86,29 @@ public abstract class SwerveDriveBase extends SubsystemBase {
      * Constructor
      * @param   settings    module settings
      */
-    public SwerveDriveBase(Settings settings) {
+    public SwerveModuleBase(SwerveModuleBaseSettings settings) {
         // Initialize variables
         this.settings = settings;
 
-        this.anglePosCtrl = new PositionController(settings.anglPosCtrl);
-        this.driveCtrl = new RateController(settings.driveCtrl);
-        this.driveCtrl = new RateController(settings.driveCtrl);
+        // Initialize controllers
+        this.angle_pos_ctrl = new PositionController(settings.angle_pos_ctrl);
+        this.angle_rate_ctrl = new RateController(settings.angle_rate_ctrl);
+        this.drive_rate_ctrl = new RateController(settings.drive_rate_ctrl);
 
-        desiredState = new SwerveModuleState();
+        // Initialize desired states
+        desired_state = new SwerveModuleState();
 
         // Set default command
-        setDefaultCommand(new AutoCommand(this));
+        setDefaultCommand(new AutoCommand());
 
-        // Setup Shuffleboard
+        // Initialize Shuffleboard
+        init_ui();
+    }
+
+    /**
+     * Initialize Shuffleboard
+     */
+    private void init_ui() {
         var layout = Shuffleboard.getTab("Drive")
             .getLayout(settings.name + " Swerve", BuiltInLayouts.kList)
             .withSize(1, 4);
@@ -173,7 +139,7 @@ public abstract class SwerveDriveBase extends SubsystemBase {
      * @return current swerve module state
      */
     public SwerveModuleState getState() {
-        return new SwerveModuleState(getDriveVelocity(),
+        return new SwerveModuleState(getDriveRate(),
                 getAnglePos());
     }
 
@@ -183,7 +149,8 @@ public abstract class SwerveDriveBase extends SubsystemBase {
      * @param desiredState desired state of the swerve module
      */
     public void setDesiredState(SwerveModuleState desiredState) {
-        this.desiredState = desiredState;
+        desired_state.optimize(getAnglePos());
+        this.desired_state = desiredState;
     }
 
     /**
@@ -206,21 +173,19 @@ public abstract class SwerveDriveBase extends SubsystemBase {
      * Updates module based on desired state
      */
     private void updateAutoControl() {
-        SwerveModuleState state = SwerveModuleState.optimize(desiredState, getAnglePos());
-
-        updateAngle(state.angle);
-        updateDrive(state.speedMetersPerSecond);
+        updateAngle(desired_state.angle);
+        updateDrive(desired_state.speedMetersPerSecond);
     }
 
     /**
      * Updates the angle position and rate controllers
      */
     private void updateAngle(Rotation2d target_angle) {
-        double current_pos = getAnglePos().asDegrees();
+        double current_pos = getAnglePos().getDegrees();
         double current_rate = getAngleRate();
-        double target_pos = target_angle.asDegrees();
-        double target_rate = anglePosCtrl.update(current_pos, current_rate, target_pos);
-        double angle_volt = angleRateCtrl.update(current_pos, current_rate, target_rate);
+        double target_pos = target_angle.getDegrees();
+        double target_rate = angle_pos_ctrl.update(current_pos, current_rate, target_pos);
+        double angle_volt = angle_rate_ctrl.update(current_pos, current_rate, target_rate);
         
         setAngleVolt(angle_volt);
     }
@@ -230,22 +195,22 @@ public abstract class SwerveDriveBase extends SubsystemBase {
      */
     private void updateDrive(double target_rate) {
         // Calculate the drive output from the drive PID controller.
-        setDriveVolt(driveCtrl.update(0, getDriveRate(), target_rate));  
+        setDriveVolt(drive_rate_ctrl.update(0, getDriveRate(), target_rate));  
     }
 
     /**
      * Updates shuffleboard
      */
     private void updateUI() {
-        sb_anglePosTarget.setDouble(desiredState.angle.getDegrees());
+        sb_anglePosTarget.setDouble(desired_state.angle.getDegrees());
         sb_anglePosCurrent.setDouble(getAnglePos().getDegrees());
         sb_angleVoltCurrent.setDouble(getAngleVolt());
         sb_angleRateCurrent.setDouble(getAngleRate());
-        sb_angleError.setDouble(desiredState.angle.getDegrees() - getAnglePos().getDegrees());
+        sb_angleError.setDouble(desired_state.angle.getDegrees() - getAnglePos().getDegrees());
 
-        sb_driveTarget.setDouble(desiredState.speedMetersPerSecond);
-        sb_driveCurrent.setDouble(getDriveVelocity());
-        sb_driveVolt.setDouble(mDrive.getMotorVoltage().getValueAsDouble());
+        sb_driveRateTarget.setDouble(desired_state.speedMetersPerSecond);
+        sb_driveRateCurrent.setDouble(getDriveRate());
+        sb_driveVolt.setDouble(getDriveVolt());
     }
 
     

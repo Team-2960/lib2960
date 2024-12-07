@@ -26,22 +26,12 @@ import frc.lib2960.util.*;
 
 import edu.wpi.first.math.controller.*;
 
+// TODO Implement using units library version of the Feed Forward methods
+
 /**
  * Implements rate control for mechanisms
  */
-public abstract class RateController {
-    /**
-     * Rate Controller Settings
-     */
-    public class Settings {
-        public final FFParam ff;     /**< Feed Forward controller parameters */
-        public final PIDParam pid;   /**< PID controller parameters */
-
-        public Settings(FFParam ff, PIDParam pid) {
-            this.ff = ff;
-            this.pid = pid;
-        }
-    }
+public class RateController {
 
     /**
      * Generalization of the Feed Forward class to allow overloading
@@ -54,7 +44,7 @@ public abstract class RateController {
          * @param   param   Feedforward Parameters
          */
         public FFControlBase(FFParam param){
-            this.settings = settings;
+            this.param = param;
         }
 
         /**
@@ -62,9 +52,7 @@ public abstract class RateController {
          * @param   current_pos     current mechanism position
          * @param   target_rate     target mechanism rate
          */
-        public double update(double current_pos, double target_rate) {
-            update(current_pos, target_rate, 0);
-        }
+        public abstract double update(double current_pos, double target_rate);
 
         /**
          * Updates the feedforward value
@@ -91,6 +79,15 @@ public abstract class RateController {
 
             // Initialize controller
             controller = new SimpleMotorFeedforward(param.kS, param.kV, param.kA);
+        }
+
+        /**
+         * Updates the feedforward value
+         * @param   current_pos     current mechanism position
+         * @param   target_rate     target mechanism rate
+         */
+        public double update(double current_pos, double target_rate) {
+            return controller.calculate(target_rate);
         }
 
         /**
@@ -125,10 +122,19 @@ public abstract class RateController {
          * Updates the feedforward value
          * @param   current_pos     current mechanism position
          * @param   target_rate     target mechanism rate
+         */
+        public double update(double current_pos, double target_rate) {
+            return controller.calculate(current_pos, target_rate);
+        }
+
+        /**
+         * Updates the feedforward value
+         * @param   current_pos     current mechanism position
+         * @param   target_rate     target mechanism rate
          * @param   target_accel    target mechanism acceleration
          */
         public double update(double current_pos, double target_rate, double target_accel) {
-            controller.calcuate(current_pos, target_rate, target_accel);
+            return controller.calculate(current_pos, target_rate, target_accel);
         }
     }
 
@@ -153,35 +159,47 @@ public abstract class RateController {
          * Updates the feedforward value
          * @param   current_pos     current mechanism position
          * @param   target_rate     target mechanism rate
+         */
+        public double update(double current_pos, double target_rate) {
+            return controller.calculate(target_rate);
+        }
+
+        /**
+         * Updates the feedforward value
+         * @param   current_pos     current mechanism position
+         * @param   target_rate     target mechanism rate
          * @param   target_accel    target mechanism acceleration
          */
         public double update(double current_pos, double target_rate, double target_accel) {
-            controller.calcuate(current_pos, target_rate, target_accel);
+            return controller.calculate(target_rate, target_accel);
         }
     }
 
-    protected final Settings settings;      /**< Controller settings */
+    protected final RateControllerSettings settings;    /**< Controller settings */
     
-    private final PIDController pidControl; /**< PID Controller object */
-    private final FFControlBase ffControl;  /**< Feed Forward controller object */
+    private final PIDController pid_control;            /**< PID Controller object */
+    private final FFControlBase ff_control;             /**< Feed Forward controller object */
     
     /**
      * Constructor
      * @param   settings    Rate Controller Settings
      */
-    public RateController (Settings settings) {
-        self.settings = settings;
+    public RateController(RateControllerSettings settings) {
+        this.settings = settings;
 
         // Initialize PID Controller
-        pidControl = PIDController(settings.pid.kP, settings.pid.kI, settings.pid.kD);
-        
-        // Initialize Feedforward controller
-        if(settings.ff.type == FFParam.FFType.SIMPLE) {
-            ffControl = new FFControlSimple(settings.ff);
-        } else if(settings.ff.type == FFParam.FFType.ARM) {
-            ffControl = new FFControlArm(settings.ff);
-        } else if(settings.ff.type == FFParam.FFType.ELEVATOR) {
-            ffControl = new FFControlElevator(settings.ff);
+        pid_control = new PIDController(settings.pid.kP, settings.pid.kI, settings.pid.kD);
+
+        // Initialize Feed Forward Controller
+        switch(settings.ff.type) {
+            case ARM:
+                ff_control = new FFControlArm(settings.ff);
+                break;
+            case ELEVATOR:
+                ff_control = new FFControlElevator(settings.ff);
+                break;
+            default:
+                ff_control = new FFControlSimple(settings.ff);
         }
     }
 
@@ -199,7 +217,7 @@ public abstract class RateController {
      * @return  output for the mechanism
      */
     private double update_pid(double current_rate, double target_rate) {
-        return pidControl.calculate(current_rate, target_rate);
+        return pid_control.calculate(current_rate, target_rate);
     }
 
     /**
@@ -209,6 +227,6 @@ public abstract class RateController {
      * @return  output for the mechanism
      */
     private double update_ff(double current_pos, double target_rate) {
-        return ffControl.update(current_pos, target_pos);
+        return ff_control.update(current_pos, target_rate);
     }
 }

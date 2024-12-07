@@ -24,12 +24,10 @@
 
  import edu.wpi.first.wpilibj.Joystick;
  
- import frc.lib2960.util.Limits;
- 
 /**
  * Manages a Joystick POV as a button
 */
-public class JoystickAxisToButton extends ButtonBase {
+public class JoystickPOVToButton extends ButtonBase {
     
     public enum Direction{
         UP(0),
@@ -56,9 +54,9 @@ public class JoystickAxisToButton extends ButtonBase {
     * @param   joystick        Joystick the button is on
     * @param   direction       POV direction
     */
-    public JoystickAxisToButton(Joystick joystick, Direction direction) {
+    public JoystickPOVToButton(Joystick joystick, Direction direction) {
         this.joystick = joystick;
-        this.axis = direction;
+        this.direction = direction;
     }
 
     /**

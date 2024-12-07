@@ -20,32 +20,41 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package frc.lib2960.oi;
+package frc.lib2960.controllers;
+
+import edu.wpi.first.wpilibj.TimedRobot;
+import frc.lib2960.util.FFParam;
+import frc.lib2960.util.PIDParam;
 
 /**
- * Button group for and-ing buttons together
+ * Rate Controller Settings
  */
-public class ButtonAndGroup extends ButtonBase {
-    private ButtonBase[] buttons;   /**< Buttons in the group */
+public class RateControllerSettings {
+    public final FFParam ff;    /**< Feed Forward controller parameters */
+    public final PIDParam pid;  /**< PID controller parameters */
+    public final double period; /**< Controller update period */ 
 
     /**
      * Constructor
-     * @param   buttons     Buttons in the group
+     *  - Period set to TimedRobot.kDefaultPeriod
+     * @param ff        Feed Forward controller parameters
+     * @param pid       PID controller parameters
      */
-    public ButtonAndGroup(ButtonBase... buttons) {
-        this.buttons = buttons;
+    public RateControllerSettings(FFParam ff, PIDParam pid) {
+        this.ff = ff;
+        this.pid = pid;
+        this.period = TimedRobot.kDefaultPeriod;
     }
-
+    
     /**
-     * Check if the button is pressed.
-     * @return  true if all buttons are pressed
+     * Constructord
+     * @param ff        Feed Forward controller parameters
+     * @param pid       PID controller parameters
+     * @param period    Controller update period
      */
-    @Override
-    public boolean pressed() {
-        boolean result = true;
-
-        for(var button: buttons) result &= button.pressed();
-
-        return result;
+    public RateControllerSettings(FFParam ff, PIDParam pid, double period) {
+        this.ff = ff;
+        this.pid = pid;
+        this.period = period;
     }
 }
