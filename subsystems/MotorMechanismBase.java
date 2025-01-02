@@ -48,7 +48,7 @@ public abstract class MotorMechanismBase extends SubsystemBase {
          * Constructor
          */
         public HoldPositionCommand() {
-            target = getPosition();
+            target = 0;
 
             addRequirements(MotorMechanismBase.this);
         }
@@ -263,7 +263,7 @@ public abstract class MotorMechanismBase extends SubsystemBase {
     public final SetPositionCommand set_pos_cmd;        /**< Internal set position command */
 
     // ShuffleBoard
-    protected final ShuffleboardLayout sb_layout;
+    protected ShuffleboardLayout sb_layout;
 
     private GenericEntry sb_position;
     private GenericEntry sb_rate;
@@ -298,34 +298,38 @@ public abstract class MotorMechanismBase extends SubsystemBase {
         cur_stage = 0;
 
         // Initialize ShuffleBoard
-        sb_layout = Shuffleboard.getTab(settings.tab_name)
-            .getLayout(settings.name, BuiltInLayouts.kList)
-            .withSize(1, 4);
-
-        sb_position = sb_layout.add("Position", getPosition()).getEntry();
-        sb_rate = sb_layout.add("Rate", getRate()).getEntry();
-
-        sb_voltages = new GenericEntry[motor_count];
-        sb_currents = new GenericEntry[motor_count];
-
-        for(int i = 0; i < motor_count; i++) {
-            sb_voltages[i] = sb_layout.add("Motor " + i + " Voltage", getMotorVoltage(i)).getEntry();
-            sb_currents[i] = sb_layout.add("Motor " + i + " Current", getMotorCurrent(i)).getEntry();
-        }
-
-        sb_atLowerLimitSensor = sb_layout.add("Position", atLowerLimitSensor()).getEntry();
-        sb_atLowerSoftLimit = sb_layout.add("Position", atLowerSoftLimit()).getEntry();
-        sb_atUpperLimitSensor = sb_layout.add("Position", atUpperLimitSensor()).getEntry();
-        sb_atUpperSoftLimit = sb_layout.add("Position", atUpperSoftLimit()).getEntry();
+        init_ui();
 
         // Initialize commands
         hold_pos_cmd = new HoldPositionCommand();
         set_voltage_cmd = new SetVoltageCommand(0);
         set_rate_cmd = new SetRateCommand(0);
-        set_pos_cmd = new SetPositionCommand(getPosition(), false);
+        set_pos_cmd = new SetPositionCommand(0, false);
 
         // Set Default Command
         setDefaultCommand(hold_pos_cmd);
+    }
+
+    private void init_ui() {
+        sb_layout = Shuffleboard.getTab(settings.tab_name)
+            .getLayout(settings.name, BuiltInLayouts.kList)
+            .withSize(1, 4);
+
+        sb_position = sb_layout.add("Position", 0).getEntry();
+        sb_rate = sb_layout.add("Rate", 0).getEntry();
+
+        sb_voltages = new GenericEntry[motor_count];
+        sb_currents = new GenericEntry[motor_count];
+
+        for(int i = 0; i < motor_count; i++) {
+            sb_voltages[i] = sb_layout.add("Motor " + i + " Voltage", 0).getEntry();
+            sb_currents[i] = sb_layout.add("Motor " + i + " Current", 0).getEntry();
+        }
+
+        sb_atLowerLimitSensor = sb_layout.add("At Lower Limit Sensor", atLowerLimitSensor()).getEntry();
+        sb_atLowerSoftLimit = sb_layout.add("At Lower Soft Limit", atLowerSoftLimit()).getEntry();
+        sb_atUpperLimitSensor = sb_layout.add("At Upper Limit Sensor", atUpperLimitSensor()).getEntry();
+        sb_atUpperSoftLimit = sb_layout.add("At Upper Soft Limit", atUpperSoftLimit()).getEntry();
     }
 
 
@@ -474,7 +478,7 @@ public abstract class MotorMechanismBase extends SubsystemBase {
      */
     public void holdPosition() {
         Command current_cmd = getCurrentCommand();
-        if(current_cmd != getDefaultCommand()) current_cmd.cancel();
+        if(current_cmd != null && current_cmd != getDefaultCommand()) current_cmd.cancel();
     }
 
     /*****************************/

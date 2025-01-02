@@ -246,6 +246,8 @@ public abstract class SwerveDriveBase extends Drivetrain {
     public SwerveDriveBase(SwerveDriveBaseSettings settings, SwerveModuleBase[] modules) {
         this.settings = settings;
         this.modules = modules;
+
+        desired_speeds = new ChassisSpeeds();
         
         // Initialize Kinematics
         kinematics = new SwerveDriveKinematics(getModuleTranslation());
@@ -253,7 +255,7 @@ public abstract class SwerveDriveBase extends Drivetrain {
         // Initialize Pose Estimation
         pose_est = new SwerveDrivePoseEstimator(
             kinematics, 
-            getAngle(), 
+            new Rotation2d(), // TODO Find better solution for initializing robot angle
             getModulePositions(), 
             new Pose2d(), 
             VecBuilder.fill(0.05, 0.05, Units.degreesToRadians(5)),
@@ -307,7 +309,8 @@ public abstract class SwerveDriveBase extends Drivetrain {
 
         sb_speedTargetR = pose_layout.add("Target Speed R", 0).getEntry();
 
-        sb_field2d = Shuffleboard.getTab("Drive").add(field2d).withWidget("Field");
+        // TODO Fix Field view
+        //sb_field2d = Shuffleboard.getTab("Drive").add(field2d).withWidget("Field");
     }
 
 
@@ -588,8 +591,9 @@ public abstract class SwerveDriveBase extends Drivetrain {
         sb_speedR.setDouble(speeds.omegaRadiansPerSecond);
         sb_robotTargetAngle.setDouble(robotTargetAngle);
 
-        field2d.setRobotPose(pose);
-        field2d.getObject("fieldTargetPoint").setPose(new Pose2d(point_track_cmd.target, Rotation2d.fromDegrees(0)));
+        // TODO Fix Field view
+        //field2d.setRobotPose(pose);
+        //field2d.getObject("fieldTargetPoint").setPose(new Pose2d(point_track_cmd.target, Rotation2d.fromDegrees(0)));
     }
 
     /**
@@ -630,8 +634,8 @@ public abstract class SwerveDriveBase extends Drivetrain {
      * Sets the current command to angle_rate_cmd if it is not already running
      */
     protected void runAngleRateCmd() {
-        Command cur_command = getCurrentCommand();
-        if(cur_command != getDefaultCommand()) cur_command.cancel();
+        Command current_cmd = getCurrentCommand();
+        if(current_cmd != null && current_cmd != getDefaultCommand()) current_cmd.cancel();
     }
 
     /**

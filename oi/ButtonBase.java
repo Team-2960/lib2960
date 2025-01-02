@@ -36,7 +36,7 @@ public abstract class ButtonBase {
     private boolean last_state;     /**< Button state the last time an edge check was preformed */
 
     public ButtonBase() {
-        last_state = pressed();
+        last_state = false;
     }
 
     /**
