@@ -490,9 +490,7 @@ public abstract class SwerveDriveBase extends Drivetrain {
      * @return current robot chassis speeds relative to the field
      */
     public ChassisSpeeds getFieldRelativeSpeeds() {
-        ChassisSpeeds speeds = getRobotRelativeSpeeds();
-        speeds.toFieldRelativeSpeeds(getAngle());
-        return speeds;
+        return ChassisSpeeds.fromRobotRelativeSpeeds(getRobotRelativeSpeeds(), getAngle());
     }
 
     /**
@@ -602,11 +600,11 @@ public abstract class SwerveDriveBase extends Drivetrain {
      */
     private void updateKinematics(ChassisSpeeds speeds) {
         // Convert chassis speeds from field relative to robot relative if in field relative mode
-        if(is_field_relative) speeds.toRobotRelativeSpeeds(getEstimatedPos().getRotation());
+        if(is_field_relative) speeds = ChassisSpeeds.fromFieldRelativeSpeeds(speeds, getEstimatedPos().getRotation());
 
         // Discretize chassis speeds
         // TODO Set update period from global settings
-        speeds.discretize(TimedRobot.kDefaultPeriod);
+        speeds = ChassisSpeeds.discretize(speeds, TimedRobot.kDefaultPeriod);
 
         // Update Swerve Modules
         var module_states = kinematics.toSwerveModuleStates(speeds);
